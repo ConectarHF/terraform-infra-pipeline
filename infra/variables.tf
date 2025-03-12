@@ -1,4 +1,8 @@
+variable "bucket_name" {
+  type = string
+}
+
 variable "bucket" {
-  type= string
- 
+  description = "Configuration for the S3 bucket"
+  type = string
 }
