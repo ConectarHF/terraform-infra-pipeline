@@ -1,20 +1,20 @@
-name: "DEV DEPLOY"
+name: "DEV DEPLOY"  # Nome do workflow
 
 on:
   push:
     branches:
-      - develop
+      - develop  # Executa o workflow quando houver um push na branch 'develop'
 
 permissions:
-  id-token: write
-  contents: read
+  id-token: write  # Permissão para autenticação via OpenID Connect
+  contents: read   # Permissão para leitura dos conteúdos do repositório
 
 jobs:
   terraform:
-    uses: ./.github/workflows/terraform.yml
+    uses: ./.github/workflows/terraform.yml  # Chama o workflow de Terraform
     with:
-      environment: dev
-      aws-assume-role-arn: "arn:aws:iam::182636812139:role/github-actions-ConectarHF-pipeline"
-      aws-region: "us-east-1"
-      aws-statefile-s3-bucket: "conectarhf-us-east-1-terraform-statefile"
-      aws-lock-dynamodb-table: "conectarhf-us-east-1-terraform-lock"
+      environment: dev  # Define o ambiente como 'dev'
+      aws-assume-role-arn: "arn:aws:iam::182636812139:role/github-actions-ConectarHF-pipeline"  # Role do IAM usada para assumir permissões na AWS
+      aws-region: "us-east-1"  # Região da AWS
+      aws-statefile-s3-bucket: "conectarhf-us-east-1-terraform-statefile"  # Bucket S3 onde o estado do Terraform é armazenado
+      aws-lock-dynamodb-table: "conectarhf-us-east-1-terraform-lock"  # Tabela do DynamoDB usada para lock do Terraform

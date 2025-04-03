@@ -1,52 +1,53 @@
-name: "Terraform Workflow"
+name: "Terraform Workflow"  # Nome do workflow de Terraform
 
 on:
-  workflow_call:
+  workflow_call:  # Permite que esse workflow seja chamado por outros workflows
     inputs:
       environment:
         type: string
-        required: true
+        required: true  # Define o ambiente (dev ou prod)
       aws-assume-role-arn:
         type: string
-        required: true
+        required: true  # ARN do role da AWS
       aws-region:
         type: string
-        required: true
+        required: true  # Região AWS
       aws-statefile-s3-bucket:
         type: string
-        required: true
+        required: true  # Nome do bucket S3 onde o estado do Terraform será armazenado
       aws-lock-dynamodb-table:
         type: string
-        required: true
+        required: true  # Nome da tabela DynamoDB para lock do Terraform
 
 jobs:
   terraform:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Define a máquina virtual onde o workflow será executado
     defaults:
       run:
-        shell: bash
+        shell: bash  # Define o shell padrão como Bash
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # Faz o checkout do código do repositório
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.11.1
+          terraform_version: 1.11.1  # Define a versão do Terraform
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ inputs.aws-assume-role-arn }}
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
-          aws-region: ${{ inputs.aws-region }}
+          role-to-assume: ${{ inputs.aws-assume-role-arn }}  # Assume a role na AWS
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC  # Nome da sessão
+          aws-region: ${{ inputs.aws-region }}  # Região da AWS
 
       - name: Read destroy configuration
         id: read-destroy-config
         run: |
           DESTROY="$(jq -r '.${{ inputs.environment }}' ./infra/destroy_config.json)"
           echo "destroy=$(echo $DESTROY)" >> $GITHUB_OUTPUT
+        # Lê um arquivo JSON que indica se a infraestrutura deve ser destruída
 
       - name: Terraform Init
         run: |
@@ -55,9 +56,10 @@ jobs:
             -backend-config="key=${{ github.event.repository.name }}" \
             -backend-config="region=${{ inputs.aws-region }}" \
             -backend-config="dynamodb_table=${{ inputs.aws-lock-dynamodb-table }}"
+        # Inicializa o Terraform com o backend configurado para o S3 e DynamoDB
 
       - name: Terraform Validate
-        run: terraform validate
+        run: terraform validate  # Valida a configuração do Terraform
 
       - name: Terraform Destroy
         if: steps.read-destroy-config.outputs.destroy == 'true'
@@ -65,6 +67,7 @@ jobs:
         run: cd infra &&
           terraform workspace select ${{ inputs.environment }} || terraform workspace new ${{ inputs.environment }} &&
           terraform destroy -var-file="./envs/${{ inputs.environment }}/terraform.tfvars" -auto-approve
+        # Destroi a infraestrutura caso esteja configurado para isso no arquivo JSON
 
       - name: Terraform Plan
         if: steps.read-destroy-config.outputs.destroy != 'true'
@@ -72,6 +75,7 @@ jobs:
         run: cd infra &&
           terraform workspace select ${{ inputs.environment }} || terraform workspace new ${{ inputs.environment }} &&
           terraform plan -var-file="./envs/${{ inputs.environment }}/terraform.tfvars" -out="${{ inputs.environment }}.plan"
+        # Executa o plano do Terraform, caso a destruição não esteja ativada
 
       - name: Terraform Apply
         if: steps.read-destroy-config.outputs.destroy != 'true'
@@ -79,3 +83,4 @@ jobs:
         run: cd infra &&
           terraform workspace select ${{ inputs.environment }} || terraform workspace new ${{ inputs.environment }} &&
           terraform apply "${{ inputs.environment }}.plan"
+        # Aplica as mudanças do Terraform se não estiver em modo de destruição
